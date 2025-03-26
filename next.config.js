@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Remove this line:
-  // output: 'export',
+  output: "standalone",
+  env: {
+    GOOGLE_PRIVATE_KEY_ID:"44442d07e5be9c94ddbd006482f2fb7a56926f88",
+    GOOGLE_PRIVATE_KEY:"-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDuTg8Xm7LPXCcC\ng9F5TSpaOfk/KWo2n0aR7wYmyqBPan8yRQEqr/wRgTQMg0jOCm+57uEDVR25m4H4\nUHLsssl7Rj0wMlvI+TcVvPLyKUOZ89XnVPDdXrXHOnzKV22ngIBc1v+oMCJ2GSMH\nQ/ngyxN5mPVrGpLjmer9kp7DFArOuDa1mV4rULexcMDi9t8QysTWC/MPQyUZWNas\n8zmolkgRaV1MJS9OyEN0vmpTi0NSgbhtFe4xjmpVblqMHTfkwUXoF84oUjxSl4Kl\nPn5YvZqfN1Qj1GT0biy9zTnXpG03diCv/2MPwuj3zwtyO6+f/jge5+OxTcoFtlTE\nY9qv1QwLAgMBAAECgf9Ems3wsS8V6b6EetTs/WOz/GMR5Y2Uxaw+ikS7GWdAqOgo\nqk6SFRf8WIK9F3T33DyBMSqWSwRdUU3/4fYAyESfUkx+egDyjf/Nwkr7n38jhlv0\nvTKaiFzMsYnVHSMnlb1elobQMXG6WuihFT2N+bWH/2d0uuT1OtqFjDBbxbYjmVat\nyalA2rDuBNyr2AaaXqbyYYGQ+yMfWzLdQHwnZLR3Xs+qK6IyGEkOp5/Mq+aZ1eXV\nJZl/OMg2FJIzN8M+KP4Z4q/Cendxu293aVdCfYBwm9MrtToCH+dHK09Di+3OgFLr\n9hhxRNLODjD44UBWaqHcuMt3wiZ3rIdG3qnTKZECgYEA/iVMRiFEcVmMP2wEn/vc\nmt7e8z/FyXWv8PVnF5ZsaK5i5Co1iHD1JnrZ7Qc+VFw6V2GRuNC4sQV/yp0vep+6\nnPXwEODSUoD9LN4XKXhJAKNuKKSucQah1s276SG+xYpRHqiQJy4vLhOwIThq35gu\nTHQJ+gi7w8hLz4zx6n6ryxECgYEA8AssTbyI0gkCDzgOC4K1s3XYaIwlz/2lspWt\np8hAl/jSGdXt68Kh2sw/6HEijiVkj7N7EMD6RNVyRVH2jXiz3eDdGd2trEImY61J\nWMwzbs6X98/3w5chDKMM17dwRjt0ciUCzLb5+HbHDCusmywMdwfFDXjMUS2zep6d\nkLA0DVsCgYACs/DYuhfZQMOOFR8DeJFDEGW8nowC9X52iJWdGZtzjY89r/k7xz/E\nNgBFVhNioEx6i24aUhX0xAM063EK09IPQ0pXU5zJBdgrdv02ErJsEFDmm8HDL/fe\nqfd6pkI6JZtxQQevcv1LdygjYk84q4yqgX1trFQa4/FydqRIAyrekQKBgQCghbhA\n291bJ6764m9x/xznP91SPLZkmqid/j48v0uC1WAa6tbKHEQEfyYVmOKU0CipeErJ\n72LteReLh74q6RbPP7pbu8SSN0JY0d8ExLl4ViuGCssTPxNY0giakQ9ByCyc0GdI\n4uvS3gtJ9kLdGd3UE5wQ4EEx4C/vxfZ0dYC5lQKBgQCHd2N4T1U69qEkAJ49PHei\n61d5/BcYQua+mpS20UWVdO6N7946yucOR+vmBir/EY/CmEqhejoaSJY3m6YUiNwN\nWF3bcQ27TiETLVH0gCBHG4X2P4GpBczHNlOwszNqAXRwJTuLZ8RSXu+72godNOTm\nQqPpALha8ZLJhsR1GRlO0Q==\n-----END PRIVATE KEY-----",
+    GOOGLE_CLIENT_EMAIL:"thefonehouse@thefonehouse.iam.gserviceaccount.com",
+    GOOGLE_CLIENT_ID:"113727066238760521071",
+    GOOGLE_CLIENT_X509_CERT_URL:"https://www.googleapis.com/robot/v1/metadata/x509/thefonehouse%40thefonehouse.iam.gserviceaccount.com"
+  }
 };
 
 module.exports = nextConfig;
