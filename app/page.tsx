@@ -355,7 +355,7 @@ export default function OrderForm() {
                   <section className="space-y-4">
                     <div className="flex items-center gap-3 text-teal-700">
                       <User className="h-5 w-5" />
-                      <h2 className="text-lg sm:text-xl font-semibold">Personal Information</h2>
+                      <h1 className="text-lg sm:text-xl font-semibold">Personal Information</h1>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
