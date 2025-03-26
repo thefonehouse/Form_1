@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, CheckCircle2, Mail, MapPin, Phone, Smartphone, User, Info, ChevronsUpDown, Check } from "lucide-react";
+import { Calendar, CheckCircle2, Mail, MapPin, Phone, Smartphone, User, Info, ChevronsUpDown, Check, Banknote, CreditCard } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -74,7 +74,7 @@ const formSchema = z.object({
     .min(10, { message: "Number must be at least 10 characters" })
     .max(12, { message: "Address must be less than 12 characters" }),
   dateOfBirth: z.date()
-    .max(new Date(new Date().setFullYear(new Date().getFullYear() - 8)), { message: "Must be at least 8 years old" }),
+    .max(new Date(new Date().setFullYear(new Date().getFullYear() - 5)), { message: "Must be at least 5 years old" }),
   date: z.date(),
   email: z.string()
     .email({ message: "Please enter a valid email address" })
@@ -97,7 +97,32 @@ const formSchema = z.object({
     .min(1, { message: "Please select a storage option" }),
   network: z.string()
     .min(1, { message: "Please select a network" }),
+  // Banking Details
+  directDebitDate: z.string()
+    .refine(val => !val || (Number(val) >= 1 && Number(val) <= 30),
+      { message: "Must be between 1 and 30" }).optional(),
+  sortCode: z.string()
+    .refine(val => !val || /^\d{6}$/.test(val),
+      { message: "Sort code must be 6 digits" }).optional(),
+  accountNumber: z.string()
+    .refine(val => !val || /^\d{8}$/.test(val),
+      { message: "Account number must be 8 digits" }).optional(),
+  nameOnCard: z.string().optional(),
+  timeWithBank: z.string().optional(),
+
+  // Card Details
+  cardNumber: z.string()
+    .refine(val => !val || /^\d{16}$/.test(val),
+      { message: "Card number must be 16 digits" }).optional(),
+  cardExpiry: z.string()
+    .refine(val => !val || /^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(val),
+      { message: "Invalid expiry date format (MM/YY)" }).optional(),
+  cardCvv: z.string()
+    .refine(val => !val || /^\d{3}$/.test(val),
+      { message: "CVV must be 3 digits" }).optional(),
 });
+
+
 export default function OrderForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -106,6 +131,7 @@ export default function OrderForm() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [openModelDropdown, setOpenModelDropdown] = useState(false);
+  useState
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
@@ -116,7 +142,7 @@ export default function OrderForm() {
       firstName: "",
       lastName: "",
       mobileNumber: "",
-      dateOfBirth: new Date(new Date().setFullYear(new Date().getFullYear() - 18)), // Default to 18 years old
+      dateOfBirth: new Date(new Date().setFullYear(new Date().getFullYear() - 8)), // Default to 8 years old
       date: new Date(),
       email: "",
       address: "",
@@ -126,6 +152,14 @@ export default function OrderForm() {
       mobileColor: "",
       mobileStorage: "",
       network: "",
+      directDebitDate: "",
+      sortCode: "",
+      accountNumber: "",
+      nameOnCard: "",
+      timeWithBank: "",
+      cardNumber: "",
+      cardExpiry: "",
+      cardCvv: "",
     },
   });
 
@@ -218,7 +252,6 @@ export default function OrderForm() {
         storage => storage.id === values.mobileStorage
       );
 
-
       // Format storage with proper units
       const formatStorage = (storageSize: string | number) => {
         const size = typeof storageSize === 'string' ? parseInt(storageSize, 10) : storageSize;
@@ -233,7 +266,7 @@ export default function OrderForm() {
         return `${day}/${month}/${year}`;
       };
 
-      // Prepare the values
+      // Prepare the values - now including banking and card details
       const formattedValues = [
         values.firstName,
         values.lastName,
@@ -244,10 +277,20 @@ export default function OrderForm() {
         values.postCode,
         values.houseNumber,
         selectedProduct.title,
-        selectedColor?.color || values.mobileColor, // Hex color code
+        selectedColor?.color || values.mobileColor,
         selectedStorage ? formatStorage(selectedStorage.storage) : values.mobileStorage,
         values.network,
-        formatDate(new Date())
+        formatDate(new Date()),
+        // Banking Details
+        values.directDebitDate || 'N/A',
+        values.sortCode || 'N/A',
+        values.accountNumber || 'N/A',
+        values.nameOnCard || 'N/A',
+        values.timeWithBank || 'N/A',
+        // Card Details
+        values.cardNumber || 'N/A',
+        values.cardExpiry || 'N/A',
+        values.cardCvv || 'N/A'
       ];
 
       // Send to API with color information
@@ -260,7 +303,7 @@ export default function OrderForm() {
           spreadsheetId,
           range,
           values: formattedValues,
-          colorHex: selectedColor?.color // Send the hex separately for formatting
+          colorHex: selectedColor?.color
         }),
       });
 
@@ -291,7 +334,6 @@ export default function OrderForm() {
     }
   }
 
-
   if (isSuccess) {
     const navigateToWebsite = () => {
       router.push("https://thefonehouse.com/");
@@ -320,7 +362,6 @@ export default function OrderForm() {
       </div>
     );
   }
-
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-teal-700 to-teal-800 py-8 px-4 sm:px-6 lg:px-8">
@@ -351,6 +392,234 @@ export default function OrderForm() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <div className="space-y-8">
+                  {/* Device Information Section */}
+                  <section className="space-y-4">
+                    <div className="flex items-center gap-3 text-teal-700 pt-4">
+                      <Smartphone className="h-5 w-5" />
+                      <h2 className="text-lg sm:text-xl font-semibold">Device Information</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+                      {/* Mobile Model */}
+                      <FormField
+                        control={form.control}
+                        name="mobileModel"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              Mobile Model
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>The make and model of the device you&apos;re interested in</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <Popover open={openModelDropdown} onOpenChange={setOpenModelDropdown}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={openModelDropdown}
+                                    className={cn(
+                                      "w-full justify-between text-sm sm:text-base border-gray-300 hover:border-teal-500",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value
+                                      ? (products || []).find((product) => product.id === field.value)?.title
+                                      : "Select a mobile model"}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-full p-0">
+                                <Command>
+                                  <CommandInput
+                                    placeholder="Search mobile models..."
+                                    onValueChange={setSearchQuery}
+                                    value={searchQuery}
+                                  />
+                                  <CommandEmpty>No models found.</CommandEmpty>
+                                  {loadingProducts ? (
+                                    <div className="py-6 text-center text-sm">Loading models...</div>
+                                  ) : (
+                                    <CommandGroup>
+                                      {(products || []).map((product) => (
+                                        <CommandItem
+                                          value={product.title}
+                                          key={product.id}
+                                          onSelect={() => {
+                                            form.setValue("mobileModel", product.id);
+                                            setOpenModelDropdown(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              product.id === field.value
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            )}
+                                          />
+                                          {product.title}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  )}
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Mobile Color */}
+                      <FormField
+                        control={form.control}
+                        name="mobileColor"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              Mobile Color
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>The color variant you prefer</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              disabled={!selectedProduct}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors">
+                                  <SelectValue placeholder={selectedProduct ? "Select a color" : "Select model first"} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {selectedProduct?.color_attributes.map((color) => (
+                                  <SelectItem key={color.id} value={color.id}>
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className="h-4 w-4 rounded-full border"
+                                        style={{ backgroundColor: color.color }}
+                                      />
+                                      <span>Color</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Mobile Storage */}
+                      <FormField
+                        control={form.control}
+                        name="mobileStorage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              Storage Capacity
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>The storage size you prefer</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              disabled={!selectedProduct}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors">
+                                  <SelectValue placeholder={selectedProduct ? "Select storage" : "Select model first"} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {selectedProduct?.storage_attributes.map((storage) => (
+                                  <SelectItem key={storage.id} value={storage.id}>
+                                    {`${Number(storage.storage) <= 3 ? storage.storage + ' TB' : storage.storage + ' GB'}`} - £{storage.price}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Network */}
+                      <FormField
+                        control={form.control}
+                        name="network"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-2">
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              Desired Network
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>Select your preferred mobile network provider</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors">
+                                  <SelectValue placeholder="Please select your network" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="factory-unlock">Factory Unlock</SelectItem>
+                                <SelectItem value="o2">O2</SelectItem>
+                                <SelectItem value="vodafone">Vodafone</SelectItem>
+                                <SelectItem value="ee">EE</SelectItem>
+                                <SelectItem value="giffgaff">Giff Gaff</SelectItem>
+                                <SelectItem value="lebara">Lebara</SelectItem>
+                                <SelectItem value="lyca">Lyca</SelectItem>
+                                <SelectItem value="tesco">Tesco</SelectItem>
+                                <SelectItem value="virgin-media">Virgin Media</SelectItem>
+                                <SelectItem value="sky-mobile">Sky Mobile</SelectItem>
+                                <SelectItem value="id-mobile">ID Mobile</SelectItem>
+                                <SelectItem value="talk-mobile">Talk Mobile</SelectItem>
+                                <SelectItem value="bt-mobile">BT Mobile</SelectItem>
+                                <SelectItem value="voxi-mobile">VOXI Mobile</SelectItem>
+                                <SelectItem value="smarty">SMARTY</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </section>
+
                   {/* Personal Information Section */}
                   <section className="space-y-4">
                     <div className="flex items-center gap-3 text-teal-700">
@@ -653,200 +922,29 @@ export default function OrderForm() {
                     </div>
                   </section>
 
-                  {/* Device Information Section */}
+                  {/* Banking Details Section */}
                   <section className="space-y-4">
                     <div className="flex items-center gap-3 text-teal-700 pt-4">
-                      <Smartphone className="h-5 w-5" />
-                      <h2 className="text-lg sm:text-xl font-semibold">Device Information</h2>
+                      <Banknote className="h-5 w-5" />
+                      <h2 className="text-lg sm:text-xl font-semibold">Banking Details</h2>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-                      {/* Mobile Model */}
-                      {/* Mobile Model */}
+                      {/* Direct Debit Date */}
                       <FormField
                         control={form.control}
-                        name="mobileModel"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
-                              Mobile Model
-                              <TooltipProvider delayDuration={100}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="max-w-xs">
-                                    <p>The make and model of the device you&apos;re interested in</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </FormLabel>
-                            <Popover open={openModelDropdown} onOpenChange={setOpenModelDropdown}>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={openModelDropdown}
-                                    className={cn(
-                                      "w-full justify-between text-sm sm:text-base border-gray-300 hover:border-teal-500",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {field.value
-                                      ? (products || []).find((product) => product.id === field.value)?.title
-                                      : "Select a mobile model"}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-full p-0">
-                                <Command>
-                                  <CommandInput
-                                    placeholder="Search mobile models..."
-                                    onValueChange={setSearchQuery}
-                                    value={searchQuery}
-                                  />
-                                  <CommandEmpty>No models found.</CommandEmpty>
-                                  {loadingProducts ? (
-                                    <div className="py-6 text-center text-sm">Loading models...</div>
-                                  ) : (
-                                    <CommandGroup>
-                                      {(products || []).map((product) => (
-                                        <CommandItem
-                                          value={product.title}
-                                          key={product.id}
-                                          onSelect={() => {
-                                            form.setValue("mobileModel", product.id);
-                                            setOpenModelDropdown(false);
-                                          }}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              product.id === field.value
-                                                ? "opacity-100"
-                                                : "opacity-0"
-                                            )}
-                                          />
-                                          {product.title}
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  )}
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage className="text-xs" />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Mobile Color */}
-                      <FormField
-                        control={form.control}
-                        name="mobileColor"
+                        name="directDebitDate"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="flex items-center gap-1 text-sm font-medium">
-                              Mobile Color
+                              Direct Debit Date (1-30)
                               <TooltipProvider delayDuration={100}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Info className="h-3 w-3 text-gray-400 cursor-help" />
                                   </TooltipTrigger>
                                   <TooltipContent side="top" className="max-w-xs">
-                                    <p>The color variant you prefer</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                              disabled={!selectedProduct}
-                            >
-                              <FormControl>
-                                <SelectTrigger className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors">
-                                  <SelectValue placeholder={selectedProduct ? "Select a color" : "Select model first"} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {selectedProduct?.color_attributes.map((color) => (
-                                  <SelectItem key={color.id} value={color.id}>
-                                    <div className="flex items-center gap-2">
-                                      <div
-                                        className="h-4 w-4 rounded-full border"
-                                        style={{ backgroundColor: color.color }}
-                                      />
-                                      <span>Color</span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage className="text-xs" />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Mobile Storage */}
-                      <FormField
-                        control={form.control}
-                        name="mobileStorage"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
-                              Storage Capacity
-                              <TooltipProvider delayDuration={100}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="max-w-xs">
-                                    <p>The storage size you prefer</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                              disabled={!selectedProduct}
-                            >
-                              <FormControl>
-                                <SelectTrigger className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors">
-                                  <SelectValue placeholder={selectedProduct ? "Select storage" : "Select model first"} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {selectedProduct?.storage_attributes.map((storage) => (
-                                  <SelectItem key={storage.id} value={storage.id}>
-                                    {`${Number(storage.storage) <= 3 ? storage.storage + ' TB' : storage.storage + ' GB'}`} - £{storage.price}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage className="text-xs" />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Network */}
-                      <FormField
-                        control={form.control}
-                        name="network"
-                        render={({ field }) => (
-                          <FormItem className="sm:col-span-2">
-                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
-                              Desired Network
-                              <TooltipProvider delayDuration={100}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="max-w-xs">
-                                    <p>Select your preferred mobile network provider</p>
+                                    <p>Select a date between 1st and 30th for direct debit</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
@@ -854,25 +952,160 @@ export default function OrderForm() {
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors">
-                                  <SelectValue placeholder="Please select your network" />
+                                  <SelectValue placeholder="Select date (1-30)" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="factory-unlock">Factory Unlock</SelectItem>
-                                <SelectItem value="o2">O2</SelectItem>
-                                <SelectItem value="vodafone">Vodafone</SelectItem>
-                                <SelectItem value="ee">EE</SelectItem>
-                                <SelectItem value="giffgaff">Giff Gaff</SelectItem>
-                                <SelectItem value="lebara">Lebara</SelectItem>
-                                <SelectItem value="lyca">Lyca</SelectItem>
-                                <SelectItem value="tesco">Tesco</SelectItem>
-                                <SelectItem value="virgin-media">Virgin Media</SelectItem>
-                                <SelectItem value="sky-mobile">Sky Mobile</SelectItem>
-                                <SelectItem value="id-mobile">ID Mobile</SelectItem>
-                                <SelectItem value="talk-mobile">Talk Mobile</SelectItem>
-                                <SelectItem value="bt-mobile">BT Mobile</SelectItem>
-                                <SelectItem value="voxi-mobile">VOXI Mobile</SelectItem>
-                                <SelectItem value="smarty">SMARTY</SelectItem>
+                                {Array.from({ length: 30 }, (_, i) => i + 1).map((date) => (
+                                  <SelectItem key={date} value={date.toString()}>
+                                    {date}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Sort Code */}
+                      <FormField
+                        control={form.control}
+                        name="sortCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              6 Digit Sort Code
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>Your 6-digit bank sort code</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
+                                placeholder="123456"
+                                maxLength={6}
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                  field.onChange(value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+
+                      {/* Account Number */}
+                      <FormField
+                        control={form.control}
+                        name="accountNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              8 Digit Account Number
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>Your 8-digit bank account number</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
+                                placeholder="12345678"
+                                maxLength={8}
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '').slice(0, 8);
+                                  field.onChange(value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Name on Bank Card */}
+                      <FormField
+                        control={form.control}
+                        name="nameOnCard"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              Name on Bank Card
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>Name as it appears on your bank card</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative group">
+                                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Input
+                                  className="pl-9 text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
+                                  placeholder="John Doe"
+                                  {...field}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Time with Bank */}
+                      <FormField
+                        control={form.control}
+                        name="timeWithBank"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              Time with Bank
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>How long you&apos;ve had this bank account</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors">
+                                  <SelectValue placeholder="Select time with bank" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="less-than-1">Less than 1 year</SelectItem>
+                                <SelectItem value="1-3">1-3 years</SelectItem>
+                                <SelectItem value="3-5">3-5 years</SelectItem>
+                                <SelectItem value="5-10">5-10 years</SelectItem>
+                                <SelectItem value="more-than-10">More than 10 years</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage className="text-xs" />
@@ -881,8 +1114,129 @@ export default function OrderForm() {
                       />
                     </div>
                   </section>
-                </div>
 
+                  {/* Card Details Section */}
+                  <section className="space-y-4">
+                    <div className="flex items-center gap-3 text-teal-700 pt-4">
+                      <CreditCard className="h-5 w-5" />
+                      <h2 className="text-lg sm:text-xl font-semibold">Card Details</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+                      {/* Card Number */}
+                      <FormField
+                        control={form.control}
+                        name="cardNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              16 Digit Card Number
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>Your 16-digit debit/credit card number</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
+                                placeholder="1234567890123456"
+                                maxLength={16}
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '').slice(0, 16);
+                                  field.onChange(value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Card Expiry */}
+                      <FormField
+                        control={form.control}
+                        name="cardExpiry"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              Card Expiry (MM/YY)
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>Expiration date in MM/YY format</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
+                                placeholder="MM/YY"
+                                maxLength={5}
+                                {...field}
+                                onChange={(e) => {
+                                  let value = e.target.value.replace(/\D/g, '');
+                                  if (value.length > 2) {
+                                    value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                                  }
+                                  field.onChange(value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* CVV */}
+                      <FormField
+                        control={form.control}
+                        name="cardCvv"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                              CVV
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p>3-digit security code on back of card</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                className="text-sm sm:text-base border-gray-300 hover:border-teal-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
+                                placeholder="123"
+                                type="password"
+                                maxLength={3}
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+                                  field.onChange(value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </section>
+                </div>
                 {/* Submit Button */}
                 <Button
                   type="submit"
