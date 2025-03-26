@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import {
   Form,
@@ -69,20 +70,11 @@ const formSchema = z.object({
     .min(2, { message: "Last name must be at least 2 characters" })
     .max(50, { message: "Last name must be less than 50 characters" })
     .regex(/^[a-zA-Z\s'-]+$/, { message: "Only letters, spaces, hyphens, and apostrophes are allowed" }),
-  // Update the mobileNumber validation in your zod schema to:
   mobileNumber: z.string()
-    .refine(val => {
-      const cleaned = val.replace(/\D/g, '');
-      // Valid if:
-      // 1. Starts with 07 and has exactly 11 digits, or
-      // 2. Starts with 447 and has exactly 12 digits
-      return (cleaned.startsWith('07') && cleaned.length === 11) ||
-        (cleaned.startsWith('447') && cleaned.length === 12);
-    }, {
-      message: "UK mobile must be 11 digits (07...) or 12 digits (447...)"
-    }),
+    .min(10, { message: "Number must be at least 10 characters" })
+    .max(12, { message: "Address must be less than 12 characters" }),
   dateOfBirth: z.date()
-    .max(new Date(new Date().setFullYear(new Date().getFullYear() - 13)), { message: "Must be at least 13 years old" }),
+    .max(new Date(new Date().setFullYear(new Date().getFullYear() - 8)), { message: "Must be at least 8 years old" }),
   date: z.date(),
   email: z.string()
     .email({ message: "Please enter a valid email address" })
@@ -115,6 +107,8 @@ export default function OrderForm() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [openModelDropdown, setOpenModelDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -204,11 +198,77 @@ export default function OrderForm() {
     return () => subscription.unsubscribe();
   }, [form, products]);
 
+
+  // Update the onSubmit function in Code 1:
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const spreadsheetId = '1lxlp-sXZRCxgFP-yJtWmyYvxgUBpIHFUG87irV75Mfg';
+      const range = 'Sheet1';
+
+      if (!selectedProduct) {
+        throw new Error("Please select a product");
+      }
+
+      // Get the selected color and storage
+      const selectedColor = selectedProduct.color_attributes.find(
+        color => color.id === values.mobileColor
+      );
+      const selectedStorage = selectedProduct.storage_attributes.find(
+        storage => storage.id === values.mobileStorage
+      );
+
+
+      // Format storage with proper units
+      const formatStorage = (storageSize: string | number) => {
+        const size = typeof storageSize === 'string' ? parseInt(storageSize, 10) : storageSize;
+        return size <= 3 ? `${size} TB` : `${size} GB`;
+      };
+
+      // Format date as "26/Jun/2025"
+      const formatDate = (date: Date) => {
+        const day = date.getDate();
+        const month = date.toLocaleString('default', { month: 'short' });
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
+      // Prepare the values
+      const formattedValues = [
+        values.firstName,
+        values.lastName,
+        values.mobileNumber,
+        formatDate(values.dateOfBirth),
+        values.email,
+        values.address,
+        values.postCode,
+        values.houseNumber,
+        selectedProduct.title,
+        selectedColor?.color || values.mobileColor, // Hex color code
+        selectedStorage ? formatStorage(selectedStorage.storage) : values.mobileStorage,
+        values.network,
+        formatDate(new Date())
+      ];
+
+      // Send to API with color information
+      const response = await fetch('/api/sheets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          spreadsheetId,
+          range,
+          values: formattedValues,
+          colorHex: selectedColor?.color // Send the hex separately for formatting
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Failed to save data');
+      }
 
       setIsSuccess(true);
       toast({
@@ -219,10 +279,11 @@ export default function OrderForm() {
 
       form.reset();
       setSelectedProduct(null);
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error('Error submitting form:', error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -230,7 +291,11 @@ export default function OrderForm() {
     }
   }
 
+
   if (isSuccess) {
+    const navigateToWebsite = () => {
+      router.push("https://thefonehouse.com/");
+    };
     return (
       <div className="min-h-screen bg-gradient-to-b from-teal-700 to-teal-800 flex items-center justify-center p-4">
         <Card className="max-w-md w-full bg-white/90 backdrop-blur-sm shadow-2xl border-0">
@@ -245,10 +310,10 @@ export default function OrderForm() {
           </CardHeader>
           <CardContent className="flex justify-center">
             <Button
-              onClick={() => setIsSuccess(false)}
               className="bg-teal-600 hover:bg-teal-700"
+              onClick={navigateToWebsite}
             >
-              Submit Another Form
+              Visit Website
             </Button>
           </CardContent>
         </Card>
@@ -757,7 +822,7 @@ export default function OrderForm() {
                               <SelectContent>
                                 {selectedProduct?.storage_attributes.map((storage) => (
                                   <SelectItem key={storage.id} value={storage.id}>
-                                    {storage.storage}GB - £{storage.price}
+                                    {`${Number(storage.storage) <= 3 ? storage.storage + ' TB' : storage.storage + ' GB'}`} - £{storage.price}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -794,16 +859,14 @@ export default function OrderForm() {
                               </FormControl>
                               <SelectContent>
                                 <SelectItem value="factory-unlock">Factory Unlock</SelectItem>
-                                <SelectItem value="three">Three</SelectItem>
                                 <SelectItem value="o2">O2</SelectItem>
-                                <SelectItem value="three">Three</SelectItem>
                                 <SelectItem value="vodafone">Vodafone</SelectItem>
                                 <SelectItem value="ee">EE</SelectItem>
-                                <SelectItem value="giff gaff">Giff Gaff</SelectItem>
+                                <SelectItem value="giffgaff">Giff Gaff</SelectItem>
                                 <SelectItem value="lebara">Lebara</SelectItem>
                                 <SelectItem value="lyca">Lyca</SelectItem>
                                 <SelectItem value="tesco">Tesco</SelectItem>
-                                <SelectItem value="virgined-media">Virgin Media</SelectItem>
+                                <SelectItem value="virgin-media">Virgin Media</SelectItem>
                                 <SelectItem value="sky-mobile">Sky Mobile</SelectItem>
                                 <SelectItem value="id-mobile">ID Mobile</SelectItem>
                                 <SelectItem value="talk-mobile">Talk Mobile</SelectItem>
