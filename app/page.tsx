@@ -598,6 +598,7 @@ export default function OrderForm() {
                               <SelectContent>
                                 <SelectItem value="factory-unlock">Factory Unlock</SelectItem>
                                 <SelectItem value="o2">O2</SelectItem>
+                                <SelectItem value="three">Three</SelectItem>
                                 <SelectItem value="vodafone">Vodafone</SelectItem>
                                 <SelectItem value="ee">EE</SelectItem>
                                 <SelectItem value="giffgaff">Giff Gaff</SelectItem>
