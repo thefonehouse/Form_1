@@ -168,8 +168,8 @@ export default function OrderForm() {
     setLoadingProducts(true);
     try {
       const url = searchQuery
-        ? `https://api.thefonehouse.com/api/products?page=1&limit=8&search=${searchQuery}`
-        : `https://api.thefonehouse.com/api/products?page=1&limit=8`;
+        ? `https://api.thefonehouse.shop/api/products?page=1&limit=8&search=${searchQuery}`
+        : `https://api.thefonehouse.shop/api/products?page=1&limit=8`;
 
       const response = await fetch(url);
       const data: ApiResponse = await response.json();
